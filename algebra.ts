@@ -475,10 +475,12 @@ export interface GraphInvariants {
 }
 
 /** Build adjacency lists from edge list. */
-function buildAdj(
-	edgeList: number[][],
-	nodeCount: number,
-): { out: number[][]; inc: number[][] } {
+interface AdjResult {
+	out: number[][];
+	inc: number[][];
+}
+
+function buildAdj(edgeList: number[][], nodeCount: number): AdjResult {
 	const out: number[][] = [];
 	const inc: number[][] = [];
 	for (let i = 0; i < nodeCount; i += 1) {
@@ -547,7 +549,7 @@ export function computeInvariants(
 			}
 		}
 		visiting.delete(node);
-		const result = [node, ...best];
+		const result = [node].concat(best);
 		depthMemo.set(node, result);
 		return result;
 	}

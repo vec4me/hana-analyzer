@@ -3,13 +3,9 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { ExportInfo, ImportBinding } from "./ast.ts";
+import { analyzeFile } from "./ast.ts";
 import { collectFiles, resolveImport } from "./scan.ts";
-
-// ── Import parsing regexes ───────────────────────────────────────────────────
-
-const IMPORT_LINE_REGEX = /^.*from\s+["'](?<specifier>[^"']+)["']/u;
-const TYPE_ONLY_PREFIX = /^import\s+type\s/u;
-const DYNAMIC_IMPORT_REGEX = /import\(\s*["'](?<specifier>[^"']+)["']\s*\)/u;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +13,9 @@ export interface Edge {
 	from: string;
 	to: string;
 	typeOnly: boolean;
+	bindings: ImportBinding[];
+	isDynamic: boolean;
+	isReexport: boolean;
 }
 
 export interface Graph {
@@ -27,6 +26,7 @@ export interface Graph {
 	importedBy: Map<string, string[]>;
 	runtimeImports: Map<string, string[]>;
 	runtimeImportedBy: Map<string, string[]>;
+	exports: Map<string, ExportInfo[]>;
 }
 
 // ── Graph building ───────────────────────────────────────────────────────────
@@ -42,6 +42,7 @@ export function buildGraph(root: string, targets: string[]): Graph {
 	const importedBy = new Map<string, string[]>();
 	const runtimeImports = new Map<string, string[]>();
 	const runtimeImportedBy = new Map<string, string[]>();
+	const fileExports = new Map<string, ExportInfo[]>();
 
 	for (const file of files) {
 		imports.set(file, []);
@@ -54,8 +55,22 @@ export function buildGraph(root: string, targets: string[]): Graph {
 		}
 	}
 
-	function addEdge(from: string, to: string, typeOnly: boolean): void {
-		const edge: Edge = { from: from, to: to, typeOnly: typeOnly };
+	function addEdge(
+		from: string,
+		to: string,
+		typeOnly: boolean,
+		bindings: ImportBinding[],
+		isDynamic: boolean,
+		isReexport: boolean,
+	): void {
+		const edge: Edge = {
+			from: from,
+			to: to,
+			typeOnly: typeOnly,
+			bindings: bindings,
+			isDynamic: isDynamic,
+			isReexport: isReexport,
+		};
 		edges.push(edge);
 		imports.get(from)?.push(to);
 		const byList = importedBy.get(to);
@@ -79,39 +94,35 @@ export function buildGraph(root: string, targets: string[]): Graph {
 
 	for (const file of files) {
 		const src = readFileSync(resolve(root, file), "utf8");
+		const analysis = analyzeFile(src, file);
 
-		for (const line of src.split("\n")) {
-			const trimmed = line.trim();
+		fileExports.set(file, analysis.exports);
 
-			const dynMatch = DYNAMIC_IMPORT_REGEX.exec(trimmed);
-			if (dynMatch?.groups?.specifier) {
-				const resolved = resolveImport(
-					resolve(root, file),
-					dynMatch.groups.specifier,
-					fileSet,
-				);
-				if (resolved) {
-					addEdge(file, resolved.slice(root.length + 1), false);
-				}
-				continue;
-			}
-
-			const importMatch = IMPORT_LINE_REGEX.exec(trimmed);
-			if (!importMatch?.groups?.specifier) {
-				continue;
-			}
+		for (const imp of analysis.imports) {
 			const resolved = resolveImport(
 				resolve(root, file),
-				importMatch.groups.specifier,
+				imp.moduleSpecifier,
 				fileSet,
 			);
-			if (resolved) {
-				addEdge(
-					file,
-					resolved.slice(root.length + 1),
-					TYPE_ONLY_PREFIX.test(trimmed),
-				);
+			if (!resolved) {
+				continue;
 			}
+			const relPath = resolved.slice(root.length + 1);
+
+			// An edge is type-only if the import declaration is type-only,
+			// or if every individual binding is type-only
+			const allBindingsTypeOnly =
+				imp.bindings.length > 0 && imp.bindings.every((b) => b.isTypeOnly);
+			const typeOnly = imp.isTypeOnly || allBindingsTypeOnly;
+
+			addEdge(
+				file,
+				relPath,
+				typeOnly,
+				imp.bindings,
+				imp.isDynamic,
+				imp.isReexport,
+			);
 		}
 	}
 
@@ -123,6 +134,7 @@ export function buildGraph(root: string, targets: string[]): Graph {
 		importedBy: importedBy,
 		runtimeImports: runtimeImports,
 		runtimeImportedBy: runtimeImportedBy,
+		exports: fileExports,
 	};
 }
 

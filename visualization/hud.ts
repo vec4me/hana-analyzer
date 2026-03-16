@@ -4,13 +4,10 @@
 import {
 	N,
 	contracted,
-	edgeList,
 	fileMod,
 	initialCost,
-	initialInvariants,
 	labels,
 	modColorMap,
-	names,
 	selected,
 	computeCongruency,
 	computeCost,
@@ -34,7 +31,8 @@ export function updateHUD(hudEl: HTMLElement): void {
 	}
 
 	// ── Graph invariants ──
-	html += '<div class="section"><h3>Graph Invariants</h3><div class="cost-grid">';
+	html +=
+		'<div class="section"><h3>Graph Invariants</h3><div class="cost-grid">';
 	html += `<span class="cost-label">nodes</span><span class="cost-value">${inv.nodeCount - contracted.size}</span>`;
 	html += `<span class="cost-label">edges</span><span class="cost-value">${inv.edgeCount}</span>`;
 	html += `<span class="cost-label">components</span><span class="cost-value">${inv.components}</span>`;
@@ -44,16 +42,19 @@ export function updateHUD(hudEl: HTMLElement): void {
 	html += `<span class="cost-label">essential edges</span><span class="cost-value">${inv.essentialEdges}</span>`;
 	html += `<span class="cost-label">redundant edges</span><span class="cost-value">${inv.redundantEdges}</span>`;
 	const cong = computeCongruency();
-	const congColor = cong >= 1.5 ? "#3fb950" : cong >= 1.0 ? "#d2a8ff" : "#f85149";
+	const congColor =
+		cong >= 1.5 ? "#3fb950" : cong >= 1.0 ? "#d2a8ff" : "#f85149";
 	html += `<span class="cost-label">congruency</span><span class="cost-value" style="color:${congColor}">${cong.toFixed(2)}x</span>`;
 	html += "</div></div>";
 
 	// ── Removability ──
 	const rem = computeRemovabilityStats();
-	const remColor = rem.average >= 0.8 ? "#3fb950" : rem.average >= 0.6 ? "#d2a8ff" : "#f85149";
+	const remColor =
+		rem.average >= 0.8 ? "#3fb950" : rem.average >= 0.6 ? "#d2a8ff" : "#f85149";
 	html += '<div class="section"><h3>Removability</h3>';
 	html += `<div style="margin-bottom:6px">average: <span style="color:${remColor};font-weight:600">${(rem.average * 100).toFixed(0)}%</span></div>`;
-	html += '<div style="font-size:11px;color:#8b949e;margin-bottom:4px">Hardest to remove (most dependents):</div>';
+	html +=
+		'<div style="font-size:11px;color:#8b949e;margin-bottom:4px">Hardest to remove (most dependents):</div>';
 	for (const [nodeIdx, dependents, impact] of rem.perNode.slice(0, 8)) {
 		const name = labels[nodeIdx] ?? String(nodeIdx);
 		const barW = Math.min(100, Math.round(impact * 100));
@@ -61,9 +62,9 @@ export function updateHUD(hudEl: HTMLElement): void {
 		html += `<span style="width:24px;text-align:right;color:#8b949e;font-size:11px">${dependents}</span>`;
 		html += `<div style="flex:1;height:6px;background:rgb(30,35,42);border-radius:3px">`;
 		html += `<div style="width:${barW}%;height:100%;background:rgb(248,81,73);border-radius:3px"></div>`;
-		html += `</div>`;
+		html += "</div>";
 		html += `<span style="font-size:11px;color:#c9d1d9;min-width:60px">${name}</span>`;
-		html += `</div>`;
+		html += "</div>";
 	}
 	html += "</div>";
 
@@ -71,9 +72,7 @@ export function updateHUD(hudEl: HTMLElement): void {
 	if (inv.longestPath.length > 0) {
 		html += '<div class="section"><h3>Longest Path</h3>';
 		html += '<div style="font-size:11px;color:#8b949e;line-height:1.5">';
-		html += inv.longestPath
-			.map((i) => labels[i] ?? String(i))
-			.join(" → ");
+		html += inv.longestPath.map((i) => labels[i] ?? String(i)).join(" → ");
 		html += "</div></div>";
 	}
 
@@ -84,17 +83,15 @@ export function updateHUD(hudEl: HTMLElement): void {
 			const name = labels[nodeIdx] ?? String(nodeIdx);
 			const barW = Math.min(
 				100,
-				Math.round(
-					(score / (inv.betweenness[0]?.[1] ?? 1)) * 100,
-				),
+				Math.round((score / (inv.betweenness[0]?.[1] ?? 1)) * 100),
 			);
 			html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
 			html += `<span style="width:30px;text-align:right;color:#8b949e;font-size:11px">${score}</span>`;
 			html += `<div style="flex:1;height:6px;background:rgb(30,35,42);border-radius:3px">`;
 			html += `<div style="width:${barW}%;height:100%;background:rgb(163,113,247);border-radius:3px"></div>`;
-			html += `</div>`;
+			html += "</div>";
 			html += `<span style="font-size:11px;color:#c9d1d9;min-width:60px">${name}</span>`;
-			html += `</div>`;
+			html += "</div>";
 		}
 		html += "</div>";
 	}

@@ -2,7 +2,12 @@
  * Text-based analysis reports — CLI version of the visualization.
  * Uses algebra.ts for all computations.
  */
-import { computeInvariants, computeRemovability, findTwinPairs, graphCongruency } from "./algebra.ts";
+import {
+	computeInvariants,
+	computeRemovability,
+	findTwinPairs,
+	graphCongruency,
+} from "./algebra.ts";
 import type { Graph } from "./graph.ts";
 
 const DIVIDER =
@@ -11,7 +16,12 @@ const SUB_DIVIDER =
 	"───────────────────────────────────────────────────────────────";
 
 /** Convert a string-keyed Graph to indexed arrays for algebra functions. */
-function toIndexed(g: Graph): { edgeList: number[][]; fileIndex: Map<string, number> } {
+interface IndexedGraph {
+	edgeList: number[][];
+	fileIndex: Map<string, number>;
+}
+
+function toIndexed(g: Graph): IndexedGraph {
 	const fileIndex = new Map<string, number>();
 	for (let i = 0; i < g.files.length; i += 1) {
 		fileIndex.set(g.files[i] as string, i);
@@ -27,10 +37,7 @@ function toIndexed(g: Graph): { edgeList: number[][]; fileIndex: Map<string, num
 	return { edgeList: edgeList, fileIndex: fileIndex };
 }
 
-function reportDegree(
-	g: Graph,
-	direction: "in" | "out",
-): void {
+function reportDegree(g: Graph, direction: "in" | "out"): void {
 	const isIn = direction === "in";
 	const runtimeMap = isIn ? g.runtimeImportedBy : g.runtimeImports;
 	const totalMap = isIn ? g.importedBy : g.imports;
@@ -101,7 +108,9 @@ export function runAllReports(g: Graph): void {
 
 	// ── Removability ──
 	const rem = computeRemovability(edgeList, g.files.length);
-	console.log(`  removability: ${(rem.average * 100).toFixed(0)}% (100% = fully decoupled)`);
+	console.log(
+		`  removability: ${(rem.average * 100).toFixed(0)}% (100% = fully decoupled)`,
+	);
 
 	// ── Hardest to remove ──
 	console.log(`\n${SUB_DIVIDER}`);
@@ -130,9 +139,7 @@ export function runAllReports(g: Graph): void {
 	console.log(" BETWEENNESS CENTRALITY (bottleneck nodes)");
 	console.log(SUB_DIVIDER);
 	for (const [nodeIdx, score] of inv.betweenness) {
-		console.log(
-			`  ${String(score).padStart(5)}  ${g.files[nodeIdx]}`,
-		);
+		console.log(`  ${String(score).padStart(5)}  ${g.files[nodeIdx]}`);
 	}
 
 	// ── Twin pairs ──
